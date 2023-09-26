@@ -36,12 +36,12 @@ jobs:
       - lint
     steps:
       - uses: actions/checkout@v3
-        if: github.ref == 'refs/heads/master'
         with:
           fetch-depth: 0
       - name: Python Semantic Release
         # https://github.com/relekang/python-semantic-release/releases
         uses: relekang/python-semantic-release@v7.34.6
+        if: github.ref == 'refs/heads/master'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pypi_token: ${{ secrets.PYPI_TOKEN }}
