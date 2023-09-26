@@ -54,7 +54,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
 
         # Retrieve user agent from GitHub if not provided for login.
         _LOGGER.debug("Retrieving user agent from GitHub.")
-        url = "https://raw.githubusercontent.com/arraylabs/pymyq/master/.USER_AGENT"
+        url = "https://raw.githubusercontent.com/Python-MyQ/Python-MyQ/master/.USER_AGENT"
 
         try:
             async with ClientSession() as session:
