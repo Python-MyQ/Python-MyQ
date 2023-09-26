@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v3.1.9 (2023-09-26)
+
+### Fix
+
+* Generate ua for all 400 errors ([#8](https://github.com/Python-MyQ/Python-MyQ/issues/8)) ([`dc85b34`](https://github.com/Python-MyQ/Python-MyQ/commit/dc85b34e87fc70c82afb466e457a855ef43a85ed))
+
 ## v3.1.8 (2023-09-26)
 
 ### Fix
