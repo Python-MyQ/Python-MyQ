@@ -1,8 +1,7 @@
 """Define MyQ devices."""
-import asyncio
-from datetime import datetime
 import logging
-from typing import TYPE_CHECKING, Optional, Union
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
 from .device import MyQDevice
 
@@ -41,4 +40,3 @@ class MyQLock(MyQDevice):
             if self.device_json.get("state") is not None
             else None
         )
-

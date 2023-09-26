@@ -1,7 +1,7 @@
 """Define the MyQ API."""
 import asyncio
-from datetime import datetime, timedelta
 import logging
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlsplit
 
@@ -22,7 +22,12 @@ from .const import (
     OAUTH_TOKEN_URI,
 )
 from .device import MyQDevice
-from .errors import AuthenticationError, InvalidCredentialsError, MyQError, RequestError
+from .errors import (
+    AuthenticationError,
+    InvalidCredentialsError,
+    MyQError,
+    RequestError,
+)
 from .garagedoor import MyQGaragedoor
 from .lamp import MyQLamp
 from .lock import MyQLock
@@ -269,7 +274,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                 except ClientResponseError as err:
                     message = f"Error requesting data from {url}: {err.status} - {err.message}"
 
-                    if getattr(err, "status") and err.status == 401:
+                    if err.status and err.status == 401:
                         if attempt == 0:
                             self._security_token = (None, None, self._security_token[2])
                             _LOGGER.debug("Status 401 received, re-authenticating.")

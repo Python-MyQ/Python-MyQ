@@ -1,7 +1,7 @@
 """Define MyQ devices."""
 import asyncio
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union
 
 from .device import MyQDevice

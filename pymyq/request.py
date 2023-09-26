@@ -1,10 +1,10 @@
 """Handle requests to MyQ."""
 import asyncio
+import logging
+import string
 from datetime import datetime, timedelta
 from json import JSONDecodeError
-import logging
 from random import choices
-import string
 from typing import Optional, Tuple
 
 from aiohttp import ClientResponse, ClientSession
@@ -19,9 +19,9 @@ from .errors import RequestError
 
 _LOGGER = logging.getLogger(__name__)
 
-REQUEST_METHODS = dict(
-    json="request_json", text="request_text", response="request_response"
-)
+REQUEST_METHODS = {
+    "json": "request_json", "text": "request_text", "response": "request_response"
+}
 DEFAULT_REQUEST_RETRIES = 5
 USER_AGENT_REFRESH = timedelta(hours=1)
 
@@ -110,7 +110,6 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
 
-        attempt = 0
         resp = None
         resp_exc = None
         last_status = ""
@@ -169,9 +168,9 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 last_error = err.message
                 resp_exc = err
 
-                if err.status == 400 and attempt == 0:
+                if err.status in (400, 403) and attempt == 0:
                     _LOGGER.debug(
-                        "Received error status 400, bad request. Will refresh user agent."
+                        "Received error status %d, bad request. Will refresh user agent.", err.status
                     )
                     await self._get_useragent()
 
