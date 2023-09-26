@@ -5,7 +5,7 @@ description = "Python package for controlling MyQ-Enabled Garage Door."
 authors = ["Lash-L <lukelashley99@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/Lash-L/pymyq"
+repository = "https://github.com/Python-MyQ/Python-MyQ"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

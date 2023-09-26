@@ -168,7 +168,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 last_error = err.message
                 resp_exc = err
 
-                if err.status in (400, 403) and attempt == 0:
+                if 400 <= err.status < 500 and attempt == 0:
                     _LOGGER.debug(
                         "Received error status %d, bad request. Will refresh user agent.", err.status
                     )
