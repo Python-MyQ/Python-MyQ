@@ -37,7 +37,7 @@ pytest-timeout = "^1.4.2"
 
 
 [tool.semantic_release]
-branch = "main"
+branch = "master"
 version_toml = "pyproject.toml:tool.poetry.version"
 version_variables = ["pymyq/__version__.py:__version__"]
 build_command = "pip install poetry && poetry build"
