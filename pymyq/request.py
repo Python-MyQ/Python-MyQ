@@ -17,6 +17,7 @@ from aiohttp.client_exceptions import (
 
 from .const import TOO_MANY_REQUEST_TIMEOUT
 from .errors import RequestError
+from .exceptions import UserRateLimit
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,12 +30,12 @@ USER_AGENT_REFRESH = timedelta(hours=1)
 
 class MyQRequest:  # pylint: disable=too-many-instance-attributes
     """Define a class to handle requests to MyQ"""
-
+    # Global until I know if I can set a time frame in HA.
+    _block_request_until: datetime | None = None
     def __init__(self, websession: ClientSession = None) -> None:
         self._websession = websession or ClientSession()
         self._useragent = None
         self._last_useragent_update = None
-        self._block_request_until: datetime | None = None
 
     async def _get_useragent(self) -> None:
         """Retrieve a user agent to use in headers."""
@@ -116,7 +117,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 self._block_request_until = None
             else:
                 _LOGGER.debug("Skipping sending request because we are currently timed out.")
-                raise Exception("Temporary placehold exception")
+                raise UserRateLimit("Timed out until %s", str(self._block_request_until))
         resp = None
         resp_exc = None
         last_status = ""
@@ -173,7 +174,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 429:
                     _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:%s", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
                     self._block_request_until = datetime.utcnow() + timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
-                    raise err
+                    raise UserRateLimit("Got 429 error - stopping request until %s", str(self._block_request_until))
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err
