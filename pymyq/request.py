@@ -171,7 +171,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 401:
                     raise err
                 if err.status == 429:
-                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
+                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:%s", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
                     self._block_request_until = datetime.utcnow() + datetime.timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
                     return None
                 last_status = err.status
