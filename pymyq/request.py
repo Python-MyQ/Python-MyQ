@@ -116,7 +116,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 self._block_request_until = None
             else:
                 _LOGGER.debug("Skipping sending request because we are currently timed out.")
-                return None
+                raise Exception("Temporary placehold exception")
         resp = None
         resp_exc = None
         last_status = ""
@@ -173,7 +173,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 429:
                     _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:%s", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
                     self._block_request_until = datetime.utcnow() + timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
-                    return None
+                    raise err
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err
