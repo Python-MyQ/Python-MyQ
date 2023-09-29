@@ -14,6 +14,7 @@ from yarl import URL
 from .account import MyQAccount
 from .const import (
     ACCOUNTS_ENDPOINT,
+    GET_ACCOUNT_INTERVAL,
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
@@ -64,6 +65,7 @@ class API:  # pylint: disable=too-many-instance-attributes
 
         self.accounts = {}  # type: Dict[str, MyQAccount]
         self.last_state_update = None  # type: Optional[datetime]
+        self.last_account_update = None
 
     @property
     def devices(self) -> Dict[str, Union[MyQDevice, MyQGaragedoor, MyQLamp, MyQLock]]:
@@ -558,39 +560,43 @@ class API:  # pylint: disable=too-many-instance-attributes
                 return
 
             _LOGGER.debug("Updating account information")
-            # If update request is for a specific account then do not retrieve account information.
-            accounts = await self._get_accounts()
+            if self.accounts and self.last_account_update is not None and (datetime.utcnow() - self.last_account_update).total_seconds() < GET_ACCOUNT_INTERVAL:
+                # Don't update accounts as it hasn't been long enough.
+                pass
+            else:
+                # If update request is for a specific account then do not retrieve account information.
+                accounts = await self._get_accounts()
 
-            if len(accounts) == 0:
-                _LOGGER.debug("No accounts found")
-                self.accounts = {}
-                return
+                if len(accounts) == 0:
+                    _LOGGER.debug("No accounts found")
+                    self.accounts = {}
+                    return
+                self.last_account_update = datetime.utcnow()
+                for account in accounts:
+                    account_id = account.get("id")
+                    if account_id is not None:
+                        if self.accounts.get(account_id):
+                            # Account already existed, update information.
+                            _LOGGER.debug(
+                                "Updating account %s with name %s",
+                                account_id,
+                                account.get("name"),
+                            )
 
-            for account in accounts:
-                account_id = account.get("id")
-                if account_id is not None:
-                    if self.accounts.get(account_id):
-                        # Account already existed, update information.
-                        _LOGGER.debug(
-                            "Updating account %s with name %s",
-                            account_id,
-                            account.get("name"),
-                        )
-
-                        self.accounts.get(account_id).account_json = account
-                    else:
-                        # This is a new account.
-                        _LOGGER.debug(
-                            "New account %s with name %s",
-                            account_id,
-                            account.get("name"),
-                        )
-                        self.accounts.update(
-                            {account_id: MyQAccount(api=self, account_json=account)}
-                        )
-
+                            self.accounts.get(account_id).account_json = account
+                        else:
+                            # This is a new account.
+                            _LOGGER.debug(
+                                "New account %s with name %s",
+                                account_id,
+                                account.get("name"),
+                            )
+                            self.accounts.update(
+                                {account_id: MyQAccount(api=self, account_json=account)}
+                            )
+                for account in self.accounts.values():
                     # Perform a device update for this account.
-                    await self.accounts.get(account_id).update()
+                    await account.update()
 
             self.last_state_update = datetime.utcnow()
 
