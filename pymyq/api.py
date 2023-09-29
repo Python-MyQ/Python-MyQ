@@ -333,6 +333,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                 have_email = False
                 have_password = False
                 have_submit = False
+                have_verification_token = False
                 # Go through all the input fields.
                 for field in form.find_all("input"):
                     if field.get("type"):
@@ -362,9 +363,12 @@ class API:  # pylint: disable=too-many-instance-attributes
                         # To confirm this form also has a submit button
                         elif field.get("type").lower() == "submit":
                             have_submit = True
+                if field.get("name") == "__RequestVerificationToken":
+                    data.update({"__RequestVerificationToken": field.get("value").value })
+                    have_verification_token = True
 
                 # Confirm we found email, password, and submit in the form to be submitted
-                if have_email and have_password and have_submit:
+                if have_email and have_password and have_submit and have_verification_token:
                     break
 
                 # If we're here then this is not the form to submit.
