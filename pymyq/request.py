@@ -16,6 +16,7 @@ from aiohttp.client_exceptions import (
 )
 
 from .errors import RequestError
+from .const import TOO_MANY_REQUEST_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         self._websession = websession or ClientSession()
         self._useragent = None
         self._last_useragent_update = None
+        self._block_request_until: datetime | None = None
 
     async def _get_useragent(self) -> None:
         """Retrieve a user agent to use in headers."""
@@ -109,7 +111,12 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         json: dict = None,
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
-
+        if self._block_request_until is not None:
+            if datetime.utcnow() >= self._block_request_until:
+                self._block_request_until = None
+            else:
+                _LOGGER.debug("Skipping sending request because we are currently timed out.")
+                return None
         resp = None
         resp_exc = None
         last_status = ""
@@ -163,7 +170,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 )
                 if err.status == 401:
                     raise err
-
+                if err.status == 429:
+                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes.", TOO_MANY_REQUEST_TIMEOUT/60)
+                    self._block_request_until = datetime.utcnow() + datetime.timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
+                    return None
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err

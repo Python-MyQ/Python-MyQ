@@ -13,7 +13,8 @@ DEVICES_ENDPOINT = (
 )
 
 WAIT_TIMEOUT = 60
-
+# When we get a error for too many request, we should pause updating for 45 minutes.
+TOO_MANY_REQUEST_TIMEOUT = 45 * 60
 DEVICE_TYPE = "device_type"
 DEVICE_TYPE_GATE = "gate"
 DEVICE_FAMILY = "device_family"
