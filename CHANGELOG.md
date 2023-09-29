@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v3.1.10 (2023-09-29)
+
+### Fix
+
+* Parse verification token ([`766e051`](https://github.com/Python-MyQ/Python-MyQ/commit/766e051d83a3034cf62fc0963dbefcc20fa084e3))
+
 ## v3.1.9 (2023-09-26)
 
 ### Fix
