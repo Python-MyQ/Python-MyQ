@@ -15,8 +15,8 @@ from aiohttp.client_exceptions import (
     ServerDisconnectedError,
 )
 
-from .errors import RequestError
 from .const import TOO_MANY_REQUEST_TIMEOUT
+from .errors import RequestError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,7 +171,8 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 401:
                     raise err
                 if err.status == 429:
-                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes.", TOO_MANY_REQUEST_TIMEOUT/60)
+                    err.
+                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
                     self._block_request_until = datetime.utcnow() + datetime.timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
                     return None
                 last_status = err.status
