@@ -364,7 +364,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                         elif field.get("type").lower() == "submit":
                             have_submit = True
                 if field.get("name") == "__RequestVerificationToken":
-                    data.update({"__RequestVerificationToken": field.get("value").value })
+                    data.update({"__RequestVerificationToken": field.get("value") })
                     have_verification_token = True
 
                 # Confirm we found email, password, and submit in the form to be submitted
