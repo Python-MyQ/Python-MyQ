@@ -175,7 +175,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 401:
                     raise err
                 if err.status == 429:
-                    timeout = err.headers.get("Retry-After", TOO_MANY_REQUEST_TIMEOUT) if err.headers is not None else TOO_MANY_REQUEST_TIMEOUT
+                    timeout = int(err.headers.get("Retry-After", TOO_MANY_REQUEST_TIMEOUT)) if err.headers is not None else TOO_MANY_REQUEST_TIMEOUT
                     _LOGGER.debug("Too many request have been made - putting a temporary pause on sending any requests for %d minutes", timeout/60)
                     self._block_request_until = datetime.utcnow() + timedelta(seconds=timeout)
                     raise UserRateLimit(f"Got 429 error - stopping request  until {str(self._block_request_until)}. there were {self._request_made} request") from err
