@@ -16,8 +16,7 @@ from aiohttp.client_exceptions import (
 )
 
 from .const import TOO_MANY_REQUEST_TIMEOUT
-from .errors import RequestError
-from .exceptions import UserRateLimit
+from .errors import RequestError, UserRateLimit
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -114,11 +113,13 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
         if self._block_request_until is not None:
+            # If we are currently blocked on this domain
+            # Check if this domain can be unblocked
             if datetime.utcnow() >= self._block_request_until:
                 self._block_request_until = None
             else:
                 _LOGGER.debug("Skipping sending request because we are currently timed out.")
-                raise UserRateLimit("Timed out until %s", str(self._block_request_until))
+                raise UserRateLimit(f"Timed out until {str(self._block_request_until)}")
         resp = None
         resp_exc = None
         last_status = ""
@@ -174,9 +175,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 401:
                     raise err
                 if err.status == 429:
-                    _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:%s", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
-                    self._block_request_until = datetime.utcnow() + timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
-                    raise UserRateLimit("Got 429 error - stopping request until %s there were %d request", str(self._block_request_until), self._request_made) from err
+                    timeout = err.headers.get("Retry-After", TOO_MANY_REQUEST_TIMEOUT) if err.headers is not None else TOO_MANY_REQUEST_TIMEOUT
+                    _LOGGER.debug("Too many request have been made - putting a temporary pause on sending any requests for %d minutes", timeout/60)
+                    self._block_request_until = datetime.utcnow() + timedelta(seconds=timeout)
+                    raise UserRateLimit(f"Got 429 error - stopping request  until {str(self._block_request_until)}. there were {self._request_made} request") from err
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err
