@@ -188,6 +188,11 @@ class API:  # pylint: disable=too-many-instance-attributes
                     self._security_token[2],
                 )
                 try:
+                    if self._myqrequests._useragent is not None:
+                        await self._myqrequests._get_useragent()
+                except Exception as err:
+                    _LOGGER.warning("New user agent refresh failed. %s", err)
+                try:
                     await self.authenticate(wait=True)
                 except AuthenticationError as auth_err:
                     message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
