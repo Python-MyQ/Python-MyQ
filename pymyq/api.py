@@ -594,9 +594,9 @@ class API:  # pylint: disable=too-many-instance-attributes
                             self.accounts.update(
                                 {account_id: MyQAccount(api=self, account_json=account)}
                             )
-                for account in self.accounts.values():
-                    # Perform a device update for this account.
-                    await account.update()
+            for account in self.accounts.values():
+                # Perform a device update for this account.
+                await account.update()
 
             self.last_state_update = datetime.utcnow()
 
