@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 COMMAND_URI = (
-    "https://account-devices-lock.myq-cloud.com/api/v5.2/Accounts/{account_id}"
+    "https://account-devices-lock.myq-cloud.com/api/v6.0/Accounts/{account_id}"
     "/locks/{device_serial}/{command}"
 )
 
