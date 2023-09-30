@@ -221,7 +221,10 @@ class API:  # pylint: disable=too-many-instance-attributes
         login_request: bool = False,
     ) -> Tuple[Optional[ClientResponse], Optional[Union[dict, str]]]:
         """Make a request."""
-        domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
+        if isinstance(url, str):
+            domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
+        else:
+            domain_specific_url = url # I believe if we are getting a URL object, that means it was given to use by a response, so we should use that and not modify it.
         # Determine the method to call based on what is to be returned.
         call_method = REQUEST_METHODS.get(returns)
         if call_method is None:
