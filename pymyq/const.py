@@ -11,7 +11,10 @@ ACCOUNTS_ENDPOINT = "https://accounts.myq-cloud.com/api/v6.0/accounts"
 DEVICES_ENDPOINT = (
     "https://devices.myq-cloud.com/api/v6.0/Accounts/{account_id}/Devices"
 )
-
+AUTO_DOMAIN = ".myq-cloud.com"
+EAST_DOMAIN = "-east.myq-cloud.com"
+WEST_DOMAIN = "-west.myq-cloud.com"
+DOMAINS = [AUTO_DOMAIN, EAST_DOMAIN, WEST_DOMAIN]
 WAIT_TIMEOUT = 60
 # When we get a error for too many request, we should pause updating for 45 minutes.
 TOO_MANY_REQUEST_TIMEOUT = 45 * 60

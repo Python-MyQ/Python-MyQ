@@ -14,6 +14,8 @@ from yarl import URL
 from .account import MyQAccount
 from .const import (
     ACCOUNTS_ENDPOINT,
+    AUTO_DOMAIN,
+    DOMAINS,
     GET_ACCOUNT_INTERVAL,
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
@@ -66,6 +68,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         self.accounts = {}  # type: Dict[str, MyQAccount]
         self.last_state_update = None  # type: Optional[datetime]
         self.last_account_update = None
+        self.current_domain_index = 0
 
     @property
     def devices(self) -> Dict[str, Union[MyQDevice, MyQGaragedoor, MyQLamp, MyQLock]]:
@@ -195,6 +198,15 @@ class API:  # pylint: disable=too-many-instance-attributes
                 # that token and schedule task to refresh token unless one is already running
                 await self.authenticate(wait=False)
 
+    def change_domain(self) -> None:
+        """Change to a different domain"""
+        old_domain = DOMAINS[self.current_domain_index]
+        self.current_domain_index +=1
+        if self.current_domain_index > len(DOMAINS) - 1:
+            self.current_domain_index = 0
+        _LOGGER.debug("Changing from %s to %s", old_domain, DOMAINS[self.current_domain_index])
+
+
     async def request(
         self,
         method: str,
@@ -209,7 +221,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         login_request: bool = False,
     ) -> Tuple[Optional[ClientResponse], Optional[Union[dict, str]]]:
         """Make a request."""
-
+        domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
         # Determine the method to call based on what is to be returned.
         call_method = REQUEST_METHODS.get(returns)
         if call_method is None:
@@ -222,7 +234,7 @@ class API:  # pylint: disable=too-many-instance-attributes
             try:
                 return await call_method(
                     method=method,
-                    url=url,
+                    url=domain_specific_url,
                     websession=websession,
                     headers=headers,
                     params=params,
@@ -232,13 +244,13 @@ class API:  # pylint: disable=too-many-instance-attributes
                 )
             except ClientResponseError as err:
                 message = (
-                    f"Error requesting data from {url}: {err.status} - {err.message}"
+                    f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
                 )
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
             except ClientError as err:
-                message = f"Error requesting data from {url}: {str(err)}"
+                message = f"Error requesting data from {domain_specific_url}: {str(err)}"
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
@@ -259,13 +271,13 @@ class API:  # pylint: disable=too-many-instance-attributes
 
             headers["Authorization"] = self._security_token[0]
 
-            _LOGGER.debug("Sending %s request to %s.", method, url)
+            _LOGGER.debug("Sending %s request to %s.", method, domain_specific_url)
             # Do the request. We will try 2 times based on response.
             for attempt in range(2):
                 try:
                     return await call_method(
                         method=method,
-                        url=url,
+                        url=domain_specific_url,
                         websession=websession,
                         headers=headers,
                         params=params,
@@ -274,9 +286,9 @@ class API:  # pylint: disable=too-many-instance-attributes
                         allow_redirects=allow_redirects,
                     )
                 except ClientResponseError as err:
-                    message = f"Error requesting data from {url}: {err.status} - {err.message}"
+                    message = f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
 
-                    if err.status and err.status == 401:
+                    if err.status and err.status in (401, 403):
                         if attempt == 0:
                             self._security_token = (None, None, self._security_token[2])
                             _LOGGER.debug("Status 401 received, re-authenticating.")
@@ -297,6 +309,8 @@ class API:  # pylint: disable=too-many-instance-attributes
                     message = f"Error requesting data from {url}: {str(err)}"
                     _LOGGER.debug(message)
                     raise RequestError(message) from err
+        _LOGGER.debug("Failed to update token - we will change to a new domain.")
+        self.change_domain()
         return None, None
 
     async def _oauth_authenticate(self) -> Tuple[str, int]:
