@@ -36,6 +36,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         self._websession = websession or ClientSession()
         self._useragent = None
         self._last_useragent_update = None
+        self._request_made = 0
 
     async def _get_useragent(self) -> None:
         """Retrieve a user agent to use in headers."""
@@ -124,6 +125,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         last_error = ""
 
         for attempt in range(DEFAULT_REQUEST_RETRIES):
+            self._request_made +=1
             if self._useragent is not None and self._useragent != "":
                 headers.update({"User-Agent": self._useragent})
 
@@ -174,7 +176,7 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 if err.status == 429:
                     _LOGGER.warning("Too many request have been made - putting a temporary pause on sending any requests for %d minutes. Headers are:%s", TOO_MANY_REQUEST_TIMEOUT/60, err.headers if err.headers else None)
                     self._block_request_until = datetime.utcnow() + timedelta(seconds=TOO_MANY_REQUEST_TIMEOUT)
-                    raise UserRateLimit("Got 429 error - stopping request until %s", str(self._block_request_until)) from err
+                    raise UserRateLimit("Got 429 error - stopping request until %s there were %d request", str(self._block_request_until), self._request_made) from err
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err
