@@ -41,6 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_STATE_UPDATE_INTERVAL = timedelta(seconds=10)
 DEFAULT_TOKEN_REFRESH = 10 * 60  # 10 minutes
 
+
 class API:  # pylint: disable=too-many-instance-attributes
     """Define a class for interacting with the MyQ iOS App API."""
 
@@ -53,7 +54,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         """Initialize."""
         self.__credentials = {"username": username, "password": password}
         self._myqrequests = MyQRequest(websession or ClientSession())
-        self._authentication_task: Optional[asyncio.Task] = None
+        self._authentication_task = None  # type:Optional[asyncio.Task]
         self._codeverifier = None  # type: Optional[str]
         self._invalid_credentials = False  # type: bool
         self._lock = asyncio.Lock()  # type: asyncio.Lock
@@ -157,14 +158,15 @@ class API:  # pylint: disable=too-many-instance-attributes
         # If we had something for an authentication task and
         # it is done then get the result and clear it out.
         if self._authentication_task is not None:
-            if self._authentication_task.done():
+            authentication_task = await self.authenticate(wait=False)
+            if authentication_task.done():
                 _LOGGER.debug(
                     "Scheduled token refresh completed, ensuring no exception."
                 )
                 self._authentication_task = None
                 try:
                     # Get the result so any exception is raised.
-                    self._authentication_task.result()
+                    authentication_task.result()
                 except asyncio.CancelledError:
                     pass
                 except (RequestError, AuthenticationError) as auth_err:
@@ -319,6 +321,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         self.change_domain()
         return None, None
 
+
     async def _oauth_authenticate(self) -> Tuple[str, int]:
 
         async with ClientSession() as session:
@@ -391,6 +394,7 @@ class API:  # pylint: disable=too-many-instance-attributes
 
                 # Confirm we found email, password, and submit in the form to be submitted
                 if have_email and have_password and have_submit and have_verification_token:
+                    _LOGGER.debug("Missing one of the valid keys email: %s, password: %s, submit: %s, verfication: %s", have_email, have_password, have_submit, have_verification_token)
                     break
 
                 # If we're here then this is not the form to submit.
