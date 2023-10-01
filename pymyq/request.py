@@ -37,6 +37,11 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         self._last_useragent_update = None
         self._request_made = 0
 
+    def clear_useragent(self) -> None:
+        """Remove the user agent."""
+        self._useragent = None
+        self._last_useragent_update = None
+
     async def _get_useragent(self) -> None:
         """Retrieve a user agent to use in headers."""
 
