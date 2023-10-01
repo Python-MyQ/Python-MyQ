@@ -194,10 +194,6 @@ class API:  # pylint: disable=too-many-instance-attributes
                     message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
                     _LOGGER.debug(message)
                     raise AuthenticationError(message) from auth_err
-            else:
-                # We still have a token, we can continue this request with
-                # that token and schedule task to refresh token unless one is already running
-                await self.authenticate(wait=False)
 
     def change_domain(self) -> None:
         """Change to a different domain"""

@@ -65,11 +65,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         url = "https://raw.githubusercontent.com/Python-MyQ/Python-MyQ/master/.USER_AGENT"
 
         try:
-            async with ClientSession() as session:
-                async with session.get(url) as resp:
-                    useragent = await resp.text()
-                    resp.raise_for_status()
-                    _LOGGER.debug("Retrieved user agent %s from GitHub.", useragent)
+            async with self._websession.get(url) as resp:
+                useragent = await resp.text()
+                resp.raise_for_status()
+                _LOGGER.debug("Retrieved user agent %s from GitHub.", useragent)
 
         except ClientError as exc:
             # Default user agent to random string with length of 5
@@ -146,7 +145,6 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                     wait_for,
                 )
                 await asyncio.sleep(wait_for)
-
             try:
                 _LOGGER.debug(
                     "Sending myq api request %s and headers %s with connection pooling",
