@@ -116,6 +116,8 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         json: dict = None,
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
+        if headers and 'Authorization' in headers.keys():
+            headers.update({"User-Agent": ""})
         if self._block_request_until is not None:
             # If we are currently blocked on this domain
             # Check if this domain can be unblocked
