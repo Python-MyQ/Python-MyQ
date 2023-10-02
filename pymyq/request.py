@@ -15,7 +15,8 @@ from aiohttp.client_exceptions import (
     ServerDisconnectedError,
 )
 
-from .errors import RequestError
+from .const import TOO_MANY_REQUEST_TIMEOUT
+from .errors import RequestError, UserRateLimit
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,9 +29,16 @@ USER_AGENT_REFRESH = timedelta(hours=1)
 
 class MyQRequest:  # pylint: disable=too-many-instance-attributes
     """Define a class to handle requests to MyQ"""
-
+    # Global until I know if I can set a time frame in HA.
+    _block_request_until: datetime | None = None
     def __init__(self, websession: ClientSession = None) -> None:
         self._websession = websession or ClientSession()
+        self._useragent = None
+        self._last_useragent_update = None
+        self._request_made = 0
+
+    def clear_useragent(self) -> None:
+        """Remove the user agent."""
         self._useragent = None
         self._last_useragent_update = None
 
@@ -57,11 +65,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         url = "https://raw.githubusercontent.com/Python-MyQ/Python-MyQ/master/.USER_AGENT"
 
         try:
-            async with ClientSession() as session:
-                async with session.get(url) as resp:
-                    useragent = await resp.text()
-                    resp.raise_for_status()
-                    _LOGGER.debug("Retrieved user agent %s from GitHub.", useragent)
+            async with self._websession.get(url) as resp:
+                useragent = await resp.text()
+                resp.raise_for_status()
+                _LOGGER.debug("Retrieved user agent %s from GitHub.", useragent)
 
         except ClientError as exc:
             # Default user agent to random string with length of 5
@@ -109,13 +116,23 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         json: dict = None,
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
-
+        if headers and 'Authorization' in headers.keys():
+            headers.update({"User-Agent": ""})
+        if self._block_request_until is not None:
+            # If we are currently blocked on this domain
+            # Check if this domain can be unblocked
+            if datetime.utcnow() >= self._block_request_until:
+                self._block_request_until = None
+            else:
+                _LOGGER.debug("Skipping sending request because we are currently timed out.")
+                raise UserRateLimit(f"Timed out until {str(self._block_request_until)}")
         resp = None
         resp_exc = None
         last_status = ""
         last_error = ""
 
         for attempt in range(DEFAULT_REQUEST_RETRIES):
+            self._request_made +=1
             if self._useragent is not None and self._useragent != "":
                 headers.update({"User-Agent": self._useragent})
 
@@ -130,7 +147,6 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                     wait_for,
                 )
                 await asyncio.sleep(wait_for)
-
             try:
                 _LOGGER.debug(
                     "Sending myq api request %s and headers %s with connection pooling",
@@ -163,7 +179,11 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                 )
                 if err.status == 401:
                     raise err
-
+                if err.status == 429:
+                    timeout = int(err.headers.get("Retry-After", TOO_MANY_REQUEST_TIMEOUT)) if err.headers is not None else TOO_MANY_REQUEST_TIMEOUT
+                    _LOGGER.debug("Too many request have been made - putting a temporary pause on sending any requests for %d minutes", timeout/60)
+                    self._block_request_until = datetime.utcnow() + timedelta(seconds=timeout)
+                    raise UserRateLimit(f"Got 429 error - stopping request  until {str(self._block_request_until)}. there were {self._request_made} request") from err
                 last_status = err.status
                 last_error = err.message
                 resp_exc = err

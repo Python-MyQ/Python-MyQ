@@ -14,6 +14,9 @@ from yarl import URL
 from .account import MyQAccount
 from .const import (
     ACCOUNTS_ENDPOINT,
+    AUTO_DOMAIN,
+    DOMAINS,
+    GET_ACCOUNT_INTERVAL,
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
@@ -64,6 +67,8 @@ class API:  # pylint: disable=too-many-instance-attributes
 
         self.accounts = {}  # type: Dict[str, MyQAccount]
         self.last_state_update = None  # type: Optional[datetime]
+        self.last_account_update = None
+        self.current_domain_index = 0
 
     @property
     def devices(self) -> Dict[str, Union[MyQDevice, MyQGaragedoor, MyQLamp, MyQLock]]:
@@ -176,22 +181,27 @@ class API:  # pylint: disable=too-many-instance-attributes
         ):
             # Token has to be refreshed, get authentication task if running otherwise
             # start a new one.
-            if self._security_token[0] is None:
-                # Wait for authentication task to be completed.
-                _LOGGER.debug(
-                    "Waiting for updated token, last refresh was %s",
-                    self._security_token[2],
-                )
-                try:
-                    await self.authenticate(wait=True)
-                except AuthenticationError as auth_err:
-                    message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
-                    _LOGGER.debug(message)
-                    raise AuthenticationError(message) from auth_err
-            else:
-                # We still have a token, we can continue this request with
-                # that token and schedule task to refresh token unless one is already running
-                await self.authenticate(wait=False)
+            self._myqrequests.clear_useragent()
+            # Wait for authentication task to be completed.
+            _LOGGER.debug(
+                "Waiting for updated token, last refresh was %s",
+                self._security_token[2],
+            )
+            try:
+                await self.authenticate(wait=True)
+            except AuthenticationError as auth_err:
+                message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
+                _LOGGER.debug(message)
+                raise AuthenticationError(message) from auth_err
+
+    def change_domain(self) -> None:
+        """Change to a different domain"""
+        old_domain = DOMAINS[self.current_domain_index]
+        self.current_domain_index +=1
+        if self.current_domain_index > len(DOMAINS) - 1:
+            self.current_domain_index = 0
+        _LOGGER.debug("Changing from %s to %s", old_domain, DOMAINS[self.current_domain_index])
+
 
     async def request(
         self,
@@ -207,7 +217,10 @@ class API:  # pylint: disable=too-many-instance-attributes
         login_request: bool = False,
     ) -> Tuple[Optional[ClientResponse], Optional[Union[dict, str]]]:
         """Make a request."""
-
+        if isinstance(url, str):
+            domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
+        else:
+            domain_specific_url = url # I believe if we are getting a URL object, that means it was given to use by a response, so we should use that and not modify it.
         # Determine the method to call based on what is to be returned.
         call_method = REQUEST_METHODS.get(returns)
         if call_method is None:
@@ -220,7 +233,7 @@ class API:  # pylint: disable=too-many-instance-attributes
             try:
                 return await call_method(
                     method=method,
-                    url=url,
+                    url=domain_specific_url,
                     websession=websession,
                     headers=headers,
                     params=params,
@@ -230,13 +243,13 @@ class API:  # pylint: disable=too-many-instance-attributes
                 )
             except ClientResponseError as err:
                 message = (
-                    f"Error requesting data from {url}: {err.status} - {err.message}"
+                    f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
                 )
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
             except ClientError as err:
-                message = f"Error requesting data from {url}: {str(err)}"
+                message = f"Error requesting data from {domain_specific_url}: {str(err)}"
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
@@ -257,13 +270,13 @@ class API:  # pylint: disable=too-many-instance-attributes
 
             headers["Authorization"] = self._security_token[0]
 
-            _LOGGER.debug("Sending %s request to %s.", method, url)
+            _LOGGER.debug("Sending %s request to %s.", method, domain_specific_url)
             # Do the request. We will try 2 times based on response.
             for attempt in range(2):
                 try:
                     return await call_method(
                         method=method,
-                        url=url,
+                        url=domain_specific_url,
                         websession=websession,
                         headers=headers,
                         params=params,
@@ -272,9 +285,9 @@ class API:  # pylint: disable=too-many-instance-attributes
                         allow_redirects=allow_redirects,
                     )
                 except ClientResponseError as err:
-                    message = f"Error requesting data from {url}: {err.status} - {err.message}"
+                    message = f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
 
-                    if err.status and err.status == 401:
+                    if err.status and err.status in (401, 403):
                         if attempt == 0:
                             self._security_token = (None, None, self._security_token[2])
                             _LOGGER.debug("Status 401 received, re-authenticating.")
@@ -295,7 +308,10 @@ class API:  # pylint: disable=too-many-instance-attributes
                     message = f"Error requesting data from {url}: {str(err)}"
                     _LOGGER.debug(message)
                     raise RequestError(message) from err
+        _LOGGER.debug("Failed to update token - we will change to a new domain.")
+        self.change_domain()
         return None, None
+
 
     async def _oauth_authenticate(self) -> Tuple[str, int]:
 
@@ -364,11 +380,12 @@ class API:  # pylint: disable=too-many-instance-attributes
                         elif field.get("type").lower() == "submit":
                             have_submit = True
                 if field.get("name") == "__RequestVerificationToken":
-                    data.update({"__RequestVerificationToken": field.get("value").value })
+                    data.update({"__RequestVerificationToken": field.get("value") })
                     have_verification_token = True
 
                 # Confirm we found email, password, and submit in the form to be submitted
                 if have_email and have_password and have_submit and have_verification_token:
+                    _LOGGER.debug("Missing one of the valid keys email: %s, password: %s, submit: %s, verfication: %s", have_email, have_password, have_submit, have_verification_token)
                     break
 
                 # If we're here then this is not the form to submit.
@@ -391,7 +408,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                 websession=session,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Cookie": resp.cookies.output(attrs=[]),
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
                 },
                 data=data,
                 allow_redirects=False,
@@ -517,7 +534,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         _LOGGER.debug("Received token that will expire in %s seconds", expires)
         self._security_token = (
             token,
-            datetime.utcnow() + timedelta(seconds=int(expires / 2)),
+            datetime.utcnow() + timedelta(seconds=int(expires)),
             datetime.now(),
         )
 
@@ -558,39 +575,43 @@ class API:  # pylint: disable=too-many-instance-attributes
                 return
 
             _LOGGER.debug("Updating account information")
-            # If update request is for a specific account then do not retrieve account information.
-            accounts = await self._get_accounts()
+            if self.accounts and self.last_account_update is not None and (datetime.utcnow() - self.last_account_update).total_seconds() < GET_ACCOUNT_INTERVAL:
+                # Don't update accounts as it hasn't been long enough.
+                pass
+            else:
+                # If update request is for a specific account then do not retrieve account information.
+                accounts = await self._get_accounts()
 
-            if len(accounts) == 0:
-                _LOGGER.debug("No accounts found")
-                self.accounts = {}
-                return
+                if len(accounts) == 0:
+                    _LOGGER.debug("No accounts found")
+                    self.accounts = {}
+                    return
+                self.last_account_update = datetime.utcnow()
+                for account in accounts:
+                    account_id = account.get("id")
+                    if account_id is not None:
+                        if self.accounts.get(account_id):
+                            # Account already existed, update information.
+                            _LOGGER.debug(
+                                "Updating account %s with name %s",
+                                account_id,
+                                account.get("name"),
+                            )
 
-            for account in accounts:
-                account_id = account.get("id")
-                if account_id is not None:
-                    if self.accounts.get(account_id):
-                        # Account already existed, update information.
-                        _LOGGER.debug(
-                            "Updating account %s with name %s",
-                            account_id,
-                            account.get("name"),
-                        )
-
-                        self.accounts.get(account_id).account_json = account
-                    else:
-                        # This is a new account.
-                        _LOGGER.debug(
-                            "New account %s with name %s",
-                            account_id,
-                            account.get("name"),
-                        )
-                        self.accounts.update(
-                            {account_id: MyQAccount(api=self, account_json=account)}
-                        )
-
-                    # Perform a device update for this account.
-                    await self.accounts.get(account_id).update()
+                            self.accounts.get(account_id).account_json = account
+                        else:
+                            # This is a new account.
+                            _LOGGER.debug(
+                                "New account %s with name %s",
+                                account_id,
+                                account.get("name"),
+                            )
+                            self.accounts.update(
+                                {account_id: MyQAccount(api=self, account_json=account)}
+                            )
+            for account in self.accounts.values():
+                # Perform a device update for this account.
+                await account.update()
 
             self.last_state_update = datetime.utcnow()
 
