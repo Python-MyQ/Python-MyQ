@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v3.1.11 (2023-10-02)
+
+### Fix
+
+* Add timeout for too many request ([#9](https://github.com/Python-MyQ/Python-MyQ/issues/9)) ([`c82432b`](https://github.com/Python-MyQ/Python-MyQ/commit/c82432b2e7a2c8a74c8b611e91bf17308aa77f5c))
+
 ## v3.1.10 (2023-09-29)
 
 ### Fix
