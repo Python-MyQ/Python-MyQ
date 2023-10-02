@@ -181,19 +181,18 @@ class API:  # pylint: disable=too-many-instance-attributes
         ):
             # Token has to be refreshed, get authentication task if running otherwise
             # start a new one.
-            if self._security_token[0] is None:
-                self._myqrequests.clear_useragent()
-                # Wait for authentication task to be completed.
-                _LOGGER.debug(
-                    "Waiting for updated token, last refresh was %s",
-                    self._security_token[2],
-                )
-                try:
-                    await self.authenticate(wait=True)
-                except AuthenticationError as auth_err:
-                    message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
-                    _LOGGER.debug(message)
-                    raise AuthenticationError(message) from auth_err
+            self._myqrequests.clear_useragent()
+            # Wait for authentication task to be completed.
+            _LOGGER.debug(
+                "Waiting for updated token, last refresh was %s",
+                self._security_token[2],
+            )
+            try:
+                await self.authenticate(wait=True)
+            except AuthenticationError as auth_err:
+                message = f"Error trying to re-authenticate to myQ service: {str(auth_err)}"
+                _LOGGER.debug(message)
+                raise AuthenticationError(message) from auth_err
 
     def change_domain(self) -> None:
         """Change to a different domain"""
@@ -535,7 +534,7 @@ class API:  # pylint: disable=too-many-instance-attributes
         _LOGGER.debug("Received token that will expire in %s seconds", expires)
         self._security_token = (
             token,
-            datetime.utcnow() + timedelta(seconds=int(expires / 2)),
+            datetime.utcnow() + timedelta(seconds=int(expires)),
             datetime.now(),
         )
 
