@@ -1,7 +1,7 @@
 """Define the MyQ API."""
 import asyncio
-import logging
 import base64
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlsplit
@@ -21,7 +21,6 @@ from .const import (
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
-    OAUTH_CLIENT_SECRET,
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
 )
