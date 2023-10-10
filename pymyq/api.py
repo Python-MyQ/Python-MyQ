@@ -441,14 +441,14 @@ class API:  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug("Getting token")
             redirect_url = f"{OAUTH_BASE_URI}{resp.headers['Location']}"
 
-            gettokenbasicauth = base64.b64encode(f"{OAUTH_CLIENT_ID}:".encode("ascii")).decode("ascii")
+            get_token_basic_auth = base64.b64encode(f"{OAUTH_CLIENT_ID}:".encode("ascii")).decode("ascii")
             resp, data = await self.request(
                 returns="json",
                 method="post",
                 url=OAUTH_TOKEN_URI,
                 websession=session,
                 headers={
-                    "Authorization": f"Basic {gettokenbasicauth}",
+                    "Authorization": f"Basic {get_token_basic_auth}",
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept": "*/*",
                 },
