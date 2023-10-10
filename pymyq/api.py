@@ -1,6 +1,7 @@
 """Define the MyQ API."""
 import asyncio
 import logging
+import base64
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import parse_qs, urlsplit
@@ -440,24 +441,22 @@ class API:  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug("Getting token")
             redirect_url = f"{OAUTH_BASE_URI}{resp.headers['Location']}"
 
+            gettokenbasicauth = base64.b64encode(f"{OAUTH_CLIENT_ID}:".encode("ascii")).decode("ascii")
             resp, data = await self.request(
                 returns="json",
                 method="post",
                 url=OAUTH_TOKEN_URI,
                 websession=session,
                 headers={
+                    "Authorization": f"Basic {gettokenbasicauth}",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "Accept": "*/*",
                 },
                 data={
-                    "client_id": OAUTH_CLIENT_ID,
-                    "client_secret": OAUTH_CLIENT_SECRET,
-                    "code": parse_qs(urlsplit(redirect_url).query).get("code", ""),
+                    "code": parse_qs(urlsplit(redirect_url).query).get("code", "")[0],
                     "code_verifier": self._code_verifier,
                     "grant_type": "authorization_code",
                     "redirect_uri": OAUTH_REDIRECT_URI,
-                    "scope": parse_qs(urlsplit(redirect_url).query).get(
-                        "code", "MyQ_Residential offline_access"
-                    ),
                 },
                 login_request=True,
             )
