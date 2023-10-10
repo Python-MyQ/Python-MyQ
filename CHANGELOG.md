@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v3.1.12 (2023-10-10)
+
+### Fix
+
+* Update oauth get token call for correctness ([#18](https://github.com/Python-MyQ/Python-MyQ/issues/18)) ([`f3efd76`](https://github.com/Python-MyQ/Python-MyQ/commit/f3efd76e22e2c63b4a178b2108e8511bb19f850b))
+
 ## v3.1.11 (2023-10-02)
 
 ### Fix
