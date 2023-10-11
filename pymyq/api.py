@@ -23,6 +23,8 @@ from .const import (
     OAUTH_CLIENT_ID,
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
+    OAUTH_LOGIN_ADDITIONAL_DATA,
+    OAUTH_LOGIN_URI
 )
 from .device import MyQDevice
 from .errors import (
@@ -399,15 +401,14 @@ class API:  # pylint: disable=too-many-instance-attributes
                     "Unable to continue login process."
                 )
 
-            data.update({"brand": "myq"})
-            data.update({"UnifiedFlowRequested": "True"})
+            data.update(OAUTH_LOGIN_ADDITIONAL_DATA)
 
             # Perform login to MyQ
             _LOGGER.debug("Performing login to MyQ")
             resp, _ = await self.request(
                 method="post",
                 returns="response",
-                url=f"{OAUTH_BASE_URI}/Account/LoginWithEmail",
+                url=OAUTH_LOGIN_URI,
                 websession=session,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
