@@ -399,7 +399,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                     "Unable to continue login process."
                 )
 
-            data.update({"brand", "myq"})
+            data.update({"brand": "myq"})
             data.update({"UnifiedFlowRequested": "True"})
 
             # Perform login to MyQ
