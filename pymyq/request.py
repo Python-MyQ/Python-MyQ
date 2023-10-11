@@ -15,7 +15,7 @@ from aiohttp.client_exceptions import (
     ServerDisconnectedError,
 )
 
-from .const import TOO_MANY_REQUEST_TIMEOUT
+from .const import AUTO_DOMAIN, DOMAINS, TOO_MANY_REQUEST_TIMEOUT
 from .errors import RequestError, UserRateLimit
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +36,8 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         self._useragent = None
         self._last_useragent_update = None
         self._request_made = 0
+        self.current_domain_index = 0
+
 
     def clear_useragent(self) -> None:
         """Remove the user agent."""
@@ -116,6 +118,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
         json: dict = None,
         allow_redirects: bool = False,
     ) -> Optional[ClientResponse]:
+        if isinstance(url, str):
+            domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
+        else:
+            domain_specific_url = url # I believe if we are getting a URL object, that means it was given to use by a response, so we should use that and not modify it.
         if headers and 'Authorization' in headers.keys():
             headers.update({"User-Agent": ""})
         if self._block_request_until is not None:
@@ -150,12 +156,12 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
             try:
                 _LOGGER.debug(
                     "Sending myq api request %s and headers %s with connection pooling",
-                    url,
+                    domain_specific_url,
                     headers,
                 )
                 resp = await websession.request(
                     method,
-                    url,
+                    domain_specific_url,
                     headers=headers,
                     params=params,
                     data=data,
@@ -193,6 +199,10 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
                         "Received error status %d, bad request. Will refresh user agent.", err.status
                     )
                     await self._get_useragent()
+                else:
+                    _LOGGER.debug("Failed to call request - we will change to a new domain.")
+                    self.change_domain()
+
 
             except (ClientOSError, ServerDisconnectedError) as err:
                 errno = getattr(err, "errno", -1)
@@ -371,3 +381,11 @@ class MyQRequest:  # pylint: disable=too-many-instance-attributes
             ),
             None,
         )
+
+    def change_domain(self) -> None:
+        """Change to a different domain"""
+        old_domain = DOMAINS[self.current_domain_index]
+        self.current_domain_index +=1
+        if self.current_domain_index > len(DOMAINS) - 1:
+            self.current_domain_index = 0
+        _LOGGER.debug("Changing from %s to %s", old_domain, DOMAINS[self.current_domain_index])

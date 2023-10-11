@@ -15,12 +15,11 @@ from yarl import URL
 from .account import MyQAccount
 from .const import (
     ACCOUNTS_ENDPOINT,
-    AUTO_DOMAIN,
-    DOMAINS,
     GET_ACCOUNT_INTERVAL,
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
 )
@@ -68,7 +67,6 @@ class API:  # pylint: disable=too-many-instance-attributes
         self.accounts = {}  # type: Dict[str, MyQAccount]
         self.last_state_update = None  # type: Optional[datetime]
         self.last_account_update = None
-        self.current_domain_index = 0
 
     @property
     def devices(self) -> Dict[str, Union[MyQDevice, MyQGaragedoor, MyQLamp, MyQLock]]:
@@ -194,14 +192,6 @@ class API:  # pylint: disable=too-many-instance-attributes
                 _LOGGER.debug(message)
                 raise AuthenticationError(message) from auth_err
 
-    def change_domain(self) -> None:
-        """Change to a different domain"""
-        old_domain = DOMAINS[self.current_domain_index]
-        self.current_domain_index +=1
-        if self.current_domain_index > len(DOMAINS) - 1:
-            self.current_domain_index = 0
-        _LOGGER.debug("Changing from %s to %s", old_domain, DOMAINS[self.current_domain_index])
-
 
     async def request(
         self,
@@ -217,10 +207,6 @@ class API:  # pylint: disable=too-many-instance-attributes
         login_request: bool = False,
     ) -> Tuple[Optional[ClientResponse], Optional[Union[dict, str]]]:
         """Make a request."""
-        if isinstance(url, str):
-            domain_specific_url = url.replace(AUTO_DOMAIN, DOMAINS[self.current_domain_index])
-        else:
-            domain_specific_url = url # I believe if we are getting a URL object, that means it was given to use by a response, so we should use that and not modify it.
         # Determine the method to call based on what is to be returned.
         call_method = REQUEST_METHODS.get(returns)
         if call_method is None:
@@ -233,7 +219,7 @@ class API:  # pylint: disable=too-many-instance-attributes
             try:
                 return await call_method(
                     method=method,
-                    url=domain_specific_url,
+                    url=url,
                     websession=websession,
                     headers=headers,
                     params=params,
@@ -243,13 +229,13 @@ class API:  # pylint: disable=too-many-instance-attributes
                 )
             except ClientResponseError as err:
                 message = (
-                    f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
+                    f"Error requesting data from {url}: {err.status} - {err.message}"
                 )
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
             except ClientError as err:
-                message = f"Error requesting data from {domain_specific_url}: {str(err)}"
+                message = f"Error requesting data from {url}: {str(err)}"
                 _LOGGER.debug(message)
                 raise RequestError(message) from err
 
@@ -270,13 +256,13 @@ class API:  # pylint: disable=too-many-instance-attributes
 
             headers["Authorization"] = self._security_token[0]
 
-            _LOGGER.debug("Sending %s request to %s.", method, domain_specific_url)
+            _LOGGER.debug("Sending %s request to %s.", method, url)
             # Do the request. We will try 2 times based on response.
             for attempt in range(2):
                 try:
                     return await call_method(
                         method=method,
-                        url=domain_specific_url,
+                        url=url,
                         websession=websession,
                         headers=headers,
                         params=params,
@@ -285,7 +271,7 @@ class API:  # pylint: disable=too-many-instance-attributes
                         allow_redirects=allow_redirects,
                     )
                 except ClientResponseError as err:
-                    message = f"Error requesting data from {domain_specific_url}: {err.status} - {err.message}"
+                    message = f"Error requesting data from {url}: {err.status} - {err.message}"
 
                     if err.status and err.status in (401, 403):
                         if attempt == 0:
@@ -308,8 +294,6 @@ class API:  # pylint: disable=too-many-instance-attributes
                     message = f"Error requesting data from {url}: {str(err)}"
                     _LOGGER.debug(message)
                     raise RequestError(message) from err
-        _LOGGER.debug("Failed to update token - we will change to a new domain.")
-        self.change_domain()
         return None, None
 
 
@@ -325,14 +309,16 @@ class API:  # pylint: disable=too-many-instance-attributes
                 websession=session,
                 headers={
                     "redirect": "follow",
+                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
                 },
                 params={
-                    "client_id": OAUTH_CLIENT_ID,
-                    "code_challenge": get_code_challenge(self._code_verifier),
                     "code_challenge_method": "S256",
-                    "redirect_uri": OAUTH_REDIRECT_URI,
                     "response_type": "code",
+                    "client_id": OAUTH_CLIENT_ID,
+                    "prompt": "login",
                     "scope": "MyQ_Residential offline_access",
+                    "code_challenge": get_code_challenge(self._code_verifier),
+                    "redirect_uri": OAUTH_REDIRECT_URI,
                 },
                 login_request=True,
             )
@@ -430,7 +416,17 @@ class API:  # pylint: disable=too-many-instance-attributes
                 url=f"{OAUTH_BASE_URI}{resp.headers['Location']}",
                 websession=session,
                 headers={
+                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.",
                     "Cookie": resp.cookies.output(attrs=[]),
+                },
+                params= {
+                    "code_challenge_method": "S256",
+                    "response_type": "code",
+                    "client_id": OAUTH_CLIENT_ID,
+                    "scope": "MyQ_Residential offline_access",
+                    "code_challenge": get_code_challenge(self._code_verifier),
+                    "redirect_uri": OAUTH_REDIRECT_URI,
+
                 },
                 allow_redirects=False,
                 login_request=True,
@@ -440,22 +436,26 @@ class API:  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug("Getting token")
             redirect_url = f"{OAUTH_BASE_URI}{resp.headers['Location']}"
 
-            get_token_basic_auth = base64.b64encode(f"{OAUTH_CLIENT_ID}:".encode("ascii")).decode("ascii")
+            client_secret_decoded = base64.b64encode(OAUTH_CLIENT_SECRET.encode("ascii")).decode("ascii")
             resp, data = await self.request(
                 returns="json",
                 method="post",
                 url=OAUTH_TOKEN_URI,
                 websession=session,
                 headers={
-                    "Authorization": f"Basic {get_token_basic_auth}",
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "*/*",
+                    "Accept": "application/json",
                 },
                 data={
+                    "client_id": OAUTH_CLIENT_ID,
+                    "client_secret": client_secret_decoded,
                     "code": parse_qs(urlsplit(redirect_url).query).get("code", "")[0],
                     "code_verifier": self._code_verifier,
                     "grant_type": "authorization_code",
                     "redirect_uri": OAUTH_REDIRECT_URI,
+                    "scope": parse_qs(urlsplit(redirect_url).query).get(
+                        "code", "MyQ_Residential offline_access"
+                    ),
                 },
                 login_request=True,
             )
