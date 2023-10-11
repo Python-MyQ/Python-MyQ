@@ -1,10 +1,10 @@
 """The myq constants."""
 
-OAUTH_CLIENT_ID = "IOS_CGI_MYQ"
+OAUTH_CLIENT_ID = "ANDROID_CGI_MYQ"
 OAUTH_CLIENT_SECRET = "VUQ0RFhuS3lQV3EyNUJTdw=="
 OAUTH_BASE_URI = "https://partner-identity.myq-cloud.com"
 OAUTH_AUTHORIZE_URI = f"{OAUTH_BASE_URI}/connect/authorize"
-OAUTH_REDIRECT_URI = "com.myqops://ios"
+OAUTH_REDIRECT_URI = "com.myqops://android"
 OAUTH_TOKEN_URI = f"{OAUTH_BASE_URI}/connect/token"
 
 ACCOUNTS_ENDPOINT = "https://accounts.myq-cloud.com/api/v6.0/accounts"

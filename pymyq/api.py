@@ -399,12 +399,15 @@ class API:  # pylint: disable=too-many-instance-attributes
                     "Unable to continue login process."
                 )
 
+            data.update({"brand", "myq"})
+            data.update({"UnifiedFlowRequested": "True"})
+
             # Perform login to MyQ
             _LOGGER.debug("Performing login to MyQ")
             resp, _ = await self.request(
                 method="post",
                 returns="response",
-                url=resp.url,
+                url=f"{OAUTH_BASE_URI}/Account/LoginWithEmail",
                 websession=session,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
