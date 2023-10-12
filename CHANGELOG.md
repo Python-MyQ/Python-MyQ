@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v3.1.13 (2023-10-12)
+
+### Fix
+
+* Update login to work around server-side 403 error ([#22](https://github.com/Python-MyQ/Python-MyQ/issues/22)) ([`4f7f61b`](https://github.com/Python-MyQ/Python-MyQ/commit/4f7f61bfa737d2659f8480465a6de6774f2bf97f))
+
 ## v3.1.12 (2023-10-10)
 
 ### Fix
