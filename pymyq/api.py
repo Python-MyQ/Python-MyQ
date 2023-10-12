@@ -21,6 +21,7 @@ from .const import (
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
+    OAUTH_LOGIN_ADDITIONAL_DATA,
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
 )
@@ -398,6 +399,8 @@ class API:  # pylint: disable=too-many-instance-attributes
                     "Form containing fields for email, password and submit not found."
                     "Unable to continue login process."
                 )
+
+            data.update(OAUTH_LOGIN_ADDITIONAL_DATA)
 
             # Perform login to MyQ
             _LOGGER.debug("Performing login to MyQ")
