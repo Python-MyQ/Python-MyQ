@@ -21,9 +21,9 @@ from .const import (
     OAUTH_AUTHORIZE_URI,
     OAUTH_BASE_URI,
     OAUTH_CLIENT_ID,
+    OAUTH_LOGIN_ADDITIONAL_DATA
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
-    OAUTH_LOGIN_ADDITIONAL_DATA
 )
 from .device import MyQDevice
 from .errors import (
