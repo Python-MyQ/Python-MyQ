@@ -23,8 +23,7 @@ from .const import (
     OAUTH_CLIENT_ID,
     OAUTH_REDIRECT_URI,
     OAUTH_TOKEN_URI,
-    OAUTH_LOGIN_ADDITIONAL_DATA,
-    OAUTH_LOGIN_URI
+    OAUTH_LOGIN_ADDITIONAL_DATA
 )
 from .device import MyQDevice
 from .errors import (
@@ -408,7 +407,7 @@ class API:  # pylint: disable=too-many-instance-attributes
             resp, _ = await self.request(
                 method="post",
                 returns="response",
-                url=OAUTH_LOGIN_URI,
+                url=resp.url,
                 websession=session,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
