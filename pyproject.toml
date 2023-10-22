@@ -22,7 +22,7 @@ beautifulsoup4 = "^4.9.3"
 pkce = "^1.0.2"
 
 [build-system]
-requires = ["poetry-core==1.6.1"]
+requires = ["poetry-core>=1.6.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.dev.dependencies]
